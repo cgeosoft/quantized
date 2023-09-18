@@ -12,24 +12,25 @@ section(class="max-w-screen-md mx-auto px-4")
       | #[a(href="https://huggingface.co/TheBloke" class="underline underline-offset-4") TheBloke]
       |  and his awesome work
 
-  div(class="flex gap-3")
+  div(class="grid md:grid-cols-3 grid-cols-1 gap-3")
 
-    div(id="filters" class="w-1/3 space-y-4")
+    div(id="filters" class="space-y-4 col-span-1")
       div
-        div(class="mb-3") Parameters
+        div(class="mb-3 font-bold") Parameters
         div(id="filter-parameters" class="text-sm flex flex-wrap space-y-1")
 
       div
-        div(class="mb-3")
-          | Format
+        div(class="mb-3 font-bold") Format
         div(id="filter-format" class="text-sm flex flex-wrap space-y-1")
 
-    div(class="w-2/3 space-y-4")
+    div(class="space-y-4 col-span-2")
+      div(class="flex justify-between items-center flex-col md:flex-row")
+        div(id="models-counter")
+        div(id="models-pages" class="flex justify-center space-x-2")
       div(id="models-list" class="space-y-2") Loading...
-      div(id="models-pages" class="flex justify-center space-x-2")
 
 script.
-  const URL = "https://huggingface.co/api/models?search=TheBloke"
+  const URL = "https://huggingface.co/api/models?search=TheBloke&full=true"
 
   const PAGE_SIZE = 10
 
@@ -46,12 +47,10 @@ script.
     page: 1
   }
 
-  function getModels() {
-    return fetch(URL).then(res => res.json())
-  }
+  async function getModels() {
+    const raw = await fetch(URL).then(res => res.json())
 
-  function parseModels(models) {
-    return models
+    return raw
       .reverse()
       .map(model => {
         const id = model.modelId.replace("TheBloke/", "")
@@ -76,7 +75,10 @@ script.
           parameters,
           format,
           uncensored,
-          lora
+          lora,
+          downloads: model.downloads,
+          likes: model.likes,
+          lastModified: new Date(model.lastModified),
         }
       })
   }
@@ -176,6 +178,9 @@ script.
       return true
     })
 
+    document.getElementById("models-counter").innerHTML =
+      `Showing ${filteredItems.length} models`
+
     if(filteredItems.length === 0) {
       const emptyElem = document.createElement("div")
       emptyElem.classList.add("text-center", "text-4xl", "opacity-50", "p-6")
@@ -192,12 +197,17 @@ script.
           <a href="${model.url}"
             class="flex flex-col overflow-hidden w-full space-y-1 py-2 px-4 border border-neutral-800 rounded hover:bg-neutral-800"
             target="_blank">
-            <div class="font-bold text-lg truncate">${model.id}</div>
-            <div class="opacity-70 text-sm">
-              <span>${model.format}</span>
-              <span>${model.parameters}B</span>
-              <span>${model.uncensored ? 'uncensored': ''}</span>
-              <span>${model.lora ? 'LoRA': ''}</span>
+            <div class="text-lg truncate">
+              ${model.id}
+            </div>
+            <div class="text-sm flex justify-between">
+              <div class="opacity-70">
+                <span>${model.lastModified.toLocaleDateString()}</span>
+              </div>
+              <div class="opacity-40">
+                <span>${model.downloads} downloads</span> -
+                <span>${model.likes} likes</span>
+              </div>
             </div>
           </a>
           `).join("")
@@ -213,8 +223,10 @@ script.
       ? Math.min(6, pages + 1)
       : Math.min(filters.page + 3, pages + 1)
 
+    const btnStyle= "text-sm px-1 py-0 border border-neutral-700 rounded hover:bg-neutral-800"
+
     const beginningBtn = document.createElement("button")
-    beginningBtn.classList.add("text-sm", "px-2", "w-10", "py-1", "border", "border-neutral-700", "rounded", "hover:bg-neutral-800")
+    beginningBtn.classList=btnStyle
     beginningBtn.innerHTML = "<<"
     beginningBtn.addEventListener("click", () => {
       filters.page = 1
@@ -224,7 +236,7 @@ script.
     document.getElementById("models-pages").appendChild(beginningBtn)
 
     const previousBtn = document.createElement("button")
-    previousBtn.classList.add("text-sm", "px-2", "w-10", "py-1", "border", "border-neutral-700", "rounded", "hover:bg-neutral-800")
+    previousBtn.classList=btnStyle
     previousBtn.innerHTML = "<"
     previousBtn.addEventListener("click", () => {
       filters.page = filters.page - 1
@@ -243,7 +255,7 @@ script.
     for(let page = start; page < end; page++){
 
       const elem = document.createElement("button")
-      elem.classList.add("text-sm", "px-2", "w-10", "py-1", "border", "border-neutral-700", "rounded", "hover:bg-neutral-800")
+      elem.classList=btnStyle
       elem.innerHTML = page
 
       if(page === filters.page) {
@@ -258,7 +270,7 @@ script.
     }
 
     const nextBtn = document.createElement("button")
-    nextBtn.classList.add("text-sm", "px-2", "w-10", "py-1", "border", "border-neutral-700", "rounded", "hover:bg-neutral-800")
+    nextBtn.classList=btnStyle
     nextBtn.innerHTML = ">"
     nextBtn.addEventListener("click", () => {
       filters.page = filters.page + 1
@@ -268,7 +280,7 @@ script.
     document.getElementById("models-pages").appendChild(nextBtn)
 
     const endBtn = document.createElement("button")
-    endBtn.classList.add("text-sm", "px-2", "w-10", "py-1", "border", "border-neutral-700", "rounded", "hover:bg-neutral-800")
+    endBtn.classList=btnStyle
     endBtn.innerHTML = ">>"
     endBtn.addEventListener("click", () => {
       filters.page = pages
@@ -288,7 +300,7 @@ script.
 
   async function load() {
 
-    models = await getModels().then(parseModels)
+    models = await getModels()
 
     const urlParams = new URLSearchParams(window.location.search);
     const parameters = urlParams.get("parameters")
