@@ -1,0 +1,307 @@
+---
+layout: _layout.pug
+title: Goat
+---
+
+section(class="max-w-screen-md mx-auto px-4")
+
+  div(class="font-bold text-center space-y-2 mb-6")
+    div(class="text-5xl") #{meta.title}
+    div(class="opacity-70 text-primary")
+      | Tracking the
+      | #[a(href="https://huggingface.co/TheBloke" class="underline underline-offset-4") TheBloke]
+      |  and his awesome work
+
+  div(class="flex gap-3")
+
+    div(id="filters" class="w-1/3 space-y-4")
+      div
+        div(class="mb-3") Parameters
+        div(id="filter-parameters" class="text-sm flex flex-wrap space-y-1")
+
+      div
+        div(class="mb-3")
+          | Format
+        div(id="filter-format" class="text-sm flex flex-wrap space-y-1")
+
+    div(class="w-2/3 space-y-4")
+      div(id="models-list" class="space-y-2") Loading...
+      div(id="models-pages" class="flex justify-center space-x-2")
+
+script.
+  const URL = "https://huggingface.co/api/models?search=TheBloke"
+
+  const PAGE_SIZE = 10
+
+  let models = []
+
+  const patterns = {
+    parameters: /(\d+)B/g,
+    format:  /(HF|GGML|GPTQ|GGUF|FP16)/g,
+  }
+
+  let filters = {
+    parameters: null,
+    format: null,
+    page: 1
+  }
+
+  function getModels() {
+    return fetch(URL).then(res => res.json())
+  }
+
+  function parseModels(models) {
+    return models
+      .reverse()
+      .map(model => {
+        const id = model.modelId.replace("TheBloke/", "")
+
+        const idUpper = id.toUpperCase()
+
+        const parametersMatch = [...idUpper.matchAll(patterns.parameters)][0]
+        const parameters = parametersMatch ? parametersMatch[1] : null
+
+        const formatMatch = [...idUpper.matchAll(patterns.format)][0]
+        const format = formatMatch ? formatMatch[1] : null
+
+        const uncensored = idUpper.includes("UNCENSORED")
+
+        const lora = idUpper.includes("LORA")
+
+        //- console.log(id, parameters, format, uncensored, lora)
+
+        return {
+          id,
+          url: `https://huggingface.co/${model.modelId}`,
+          parameters,
+          format,
+          uncensored,
+          lora
+        }
+      })
+  }
+
+  function renderFilterRadio(label,value,category) {
+
+    const filtersElem = document.getElementById(`filter-${category}`)
+
+    const elem = document.createElement("div")
+    elem.classList.add("w-full","gap-3", "flex", "items-center", "cursor-pointer")
+
+    const radio = document.createElement("input")
+    radio.id = `filter-${category}-${value}`
+    radio.type = "radio"
+    radio.value = value
+    radio.name = `filter-${category}`
+    radio.classList.add("text-primary-500")
+    radio.checked = filters[category] === value
+    radio.addEventListener("click", (ev) => {
+      filters[category] = ev.target.value
+      filters.page = 1
+      renderPage()
+    })
+    elem.appendChild(radio)
+
+    const labelElem = document.createElement("label")
+    labelElem.innerHTML = label
+    labelElem.htmlFor = radio.id
+    elem.appendChild(labelElem)
+
+    filtersElem.appendChild(elem)
+  }
+
+  function renderFilterParameters() {
+
+    const parameters = models
+      .map(model => model.parameters || "unknown")
+      .reduce((acc, val) => {
+        let x = acc.find(v => v.value === val)
+        if(!x){
+          x = { value: val, count: 0 }
+          acc.push(x)
+        }
+        x.count++
+        return acc
+      } , [])
+
+    renderFilterRadio(`All Parameters <span class='text-sm opacity-40'>(${models.length})</span>`, null, "parameters")
+
+    for(const parameter of parameters.filter(p => p.value !== "unknown").sort((a, b) => a.value - b.value)) {
+      renderFilterRadio(`${parameter.value}B <span class='text-sm opacity-40'>(${parameter.count})</span>`, parameter.value, "parameters")
+    }
+
+    renderFilterRadio(`Unknown <span class='text-sm opacity-40'>(${parameters.find(p => p.value === "unknown").count})</span>`, "unknown", "parameters")
+  }
+
+  function renderFilterFormat() {
+
+    const formats = models
+      .map(model => model.format || "unknown")
+      .reduce((acc, val) => {
+        let x = acc.find(v => v.value === val)
+        if(!x){
+          x = { value: val, count: 0 }
+          acc.push(x)
+        }
+        x.count++
+        return acc
+      } , [])
+
+    renderFilterRadio(`All Formats <span class='text-sm opacity-40'>(${models.length})</span>`, null, "format")
+
+    for(const format of formats.filter(p => p.value !== "unknown").sort((a, b) => a.value - b.value)) {
+      renderFilterRadio(`${format.value} <span class='text-sm opacity-40'>(${format.count})</span>`, format.value, "format")
+    }
+
+    renderFilterRadio(`Unknown <span class='text-sm opacity-40'>(${formats.find(p => p.value === "unknown").count})</span>`, "unknown", "format")
+  }
+
+  function renderPage(){
+
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set("page", filters.page)
+    if(filters.parameters) urlParams.set("parameters", filters.parameters)
+    if(filters.format) urlParams.set("format", filters.format)
+    window.history.replaceState({}, '', `${location.pathname}?${urlParams}`);
+
+    const filteredItems = models.filter(model => {
+      if(filters.parameters){
+        if(filters.parameters === "unknown" && model.parameters === null) return true
+        if(model.parameters !== filters.parameters) return false
+      }
+      if(filters.format){
+        if(filters.format === "unknown" && model.format === null) return true
+        if(model.format !== filters.format) return false
+      }
+      return true
+    })
+
+    if(filteredItems.length === 0) {
+      const emptyElem = document.createElement("div")
+      emptyElem.classList.add("text-center", "text-4xl", "opacity-50", "p-6")
+      emptyElem.innerHTML = "No models found"
+      document.getElementById("models-list").innerHTML = ""
+      document.getElementById("models-list").appendChild(emptyElem)
+      return
+    }
+
+    document.getElementById("models-list").innerHTML =
+      filteredItems
+        .slice((filters.page - 1) * PAGE_SIZE, filters.page * PAGE_SIZE)
+        .map(model => `
+          <a href="${model.url}"
+            class="flex flex-col overflow-hidden w-full space-y-1 py-2 px-4 border border-neutral-800 rounded hover:bg-neutral-800"
+            target="_blank">
+            <div class="font-bold text-lg truncate">${model.id}</div>
+            <div class="opacity-70 text-sm">
+              <span>${model.format}</span>
+              <span>${model.parameters}B</span>
+              <span>${model.uncensored ? 'uncensored': ''}</span>
+              <span>${model.lora ? 'LoRA': ''}</span>
+            </div>
+          </a>
+          `).join("")
+
+    document.getElementById("models-pages").innerHTML = ""
+
+    const pages = Math.ceil(filteredItems.length / PAGE_SIZE)
+
+    const start = filters.page > pages - 3
+      ? Math.max(1, pages - 4)
+      : Math.max(1, filters.page - 2)
+    const end = filters.page < 3
+      ? Math.min(6, pages + 1)
+      : Math.min(filters.page + 3, pages + 1)
+
+    const beginningBtn = document.createElement("button")
+    beginningBtn.classList.add("text-sm", "px-2", "w-10", "py-1", "border", "border-neutral-700", "rounded", "hover:bg-neutral-800")
+    beginningBtn.innerHTML = "<<"
+    beginningBtn.addEventListener("click", () => {
+      filters.page = 1
+      renderPage()
+    })
+
+    document.getElementById("models-pages").appendChild(beginningBtn)
+
+    const previousBtn = document.createElement("button")
+    previousBtn.classList.add("text-sm", "px-2", "w-10", "py-1", "border", "border-neutral-700", "rounded", "hover:bg-neutral-800")
+    previousBtn.innerHTML = "<"
+    previousBtn.addEventListener("click", () => {
+      filters.page = filters.page - 1
+      renderPage()
+    })
+
+    if(filters.page === 1) {
+      beginningBtn.disabled = true
+      beginningBtn.classList.add("opacity-50")
+      previousBtn.disabled = true
+      previousBtn.classList.add("opacity-50")
+    }
+
+    document.getElementById("models-pages").appendChild(previousBtn)
+
+    for(let page = start; page < end; page++){
+
+      const elem = document.createElement("button")
+      elem.classList.add("text-sm", "px-2", "w-10", "py-1", "border", "border-neutral-700", "rounded", "hover:bg-neutral-800")
+      elem.innerHTML = page
+
+      if(page === filters.page) {
+        elem.classList.add("bg-neutral-800")
+      }
+
+      elem.addEventListener("click", () => {
+        filters.page = page
+        renderPage()
+      })
+      document.getElementById("models-pages").appendChild(elem)
+    }
+
+    const nextBtn = document.createElement("button")
+    nextBtn.classList.add("text-sm", "px-2", "w-10", "py-1", "border", "border-neutral-700", "rounded", "hover:bg-neutral-800")
+    nextBtn.innerHTML = ">"
+    nextBtn.addEventListener("click", () => {
+      filters.page = filters.page + 1
+      renderPage()
+    })
+
+    document.getElementById("models-pages").appendChild(nextBtn)
+
+    const endBtn = document.createElement("button")
+    endBtn.classList.add("text-sm", "px-2", "w-10", "py-1", "border", "border-neutral-700", "rounded", "hover:bg-neutral-800")
+    endBtn.innerHTML = ">>"
+    endBtn.addEventListener("click", () => {
+      filters.page = pages
+      renderPage()
+    })
+
+    document.getElementById("models-pages").appendChild(endBtn)
+
+    if(filters.page === pages) {
+      endBtn.disabled = true
+      endBtn.classList.add("opacity-50")
+      nextBtn.disabled = true
+      nextBtn.classList.add("opacity-50")
+    }
+
+  }
+
+  async function load() {
+
+    models = await getModels().then(parseModels)
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const parameters = urlParams.get("parameters")
+    filters.parameters = urlParams.get("parameters") || null
+    filters.format = urlParams.get("format") || null
+    filters.page = parseInt(urlParams.get("page") || "1")
+
+    renderFilterParameters()
+    renderFilterFormat()
+    renderPage()
+  }
+
+
+  document.addEventListener("DOMContentLoaded", load)
+
+

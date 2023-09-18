@@ -1,0 +1,44 @@
+{
+  "name": "@cgeosoft/quantized",
+  "description": "Tracking the TheBloke and his awesome work",
+  "version": "0.1.0",
+  "author": {
+    "name": "Christos Georgiou",
+    "email": "christos@cgeosoft.com",
+    "url": "https://cgeosoft.com"
+  },
+  "private": true,
+  "license": "NONE",
+  "scripts": {
+    "start": "run-p dev:*",
+    "dev:css": "tailwindcss -i src/css/style.css -o dist/css/style.css --watch",
+    "dev:11ty": "eleventy --serve",
+    "build": "cross-env APP_ENV=production run-s build:*",
+    "build:build-number": "node scripts/build-number.mjs",
+    "build:css": "tailwindcss -i src/css/style.css -o dist/css/style.css",
+    "build:11ty": "eleventy",
+    "deploy": "netlify deploy --prod"
+  },
+  "dependencies": {
+    "@11ty/eleventy": "^2.0.1",
+    "@11ty/eleventy-dev-server": "^1.0.4",
+    "@tailwindcss/typography": "^0.5.9",
+    "@types/node": "*",
+    "canvas": "^2.11.2",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.3.1",
+    "front-matter": "^4.0.2",
+    "glob": "^10.3.1",
+    "js-yaml": "^4.1.0",
+    "netlify-cli": "^15.8.0",
+    "node-fetch": "^3.3.1",
+    "npm-run-all": "^4.1.5",
+    "pug": "^3.0.2",
+    "queue": "^7.0.0",
+    "tailwind-scrollbar": "^3.0.4",
+    "tailwindcss": "^3.3.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.6"
+  }
+}

@@ -1,0 +1,74 @@
+@importurl("https://cdnjs.cloudflare.com/ajax/libs/fork-awesome/1.2.0/css/fork-awesome.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Fira+Mono&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  li a,
+  p a {
+    text-decoration: underline;
+    color: #fff;
+  }
+
+  .container {
+    @apply max-w-4xl mx-auto px-4;
+  }
+
+  .prose :where(strong):not(:where([class~="not-prose"] *)) {
+    color: var(--tw-prose);
+  }
+
+  .btn{
+    @apply
+      font-bold
+      rounded
+      px-4
+      py-2
+      text-center
+      leading-3
+  }
+
+  .btn-primary{
+    @apply
+      btn
+      bg-primary
+      text-white
+      hover:bg-primary-400
+      dark:bg-primary-700
+      dark:hover:bg-primary-800
+  }
+
+  .btn-secondary{
+    @apply
+      btn
+      bg-transparent
+      border
+      dark:border-neutral-800
+      dark:text-white
+      dark:hover:border-neutral-700
+  }
+
+  .input-standard{
+    @apply
+      rounded
+      w-full
+      py-1
+      px-2
+      focus:border-primary-700
+      focus:outline-none
+      focus:ring-0
+      dark:bg-neutral-800;
+  }
+
+  .scrollbar-default{
+    @apply
+      scrollbar
+      scrollbar-w-1
+      scrollbar-thumb-neutral-300
+      scrollbar-track-neutral-100
+      dark:scrollbar-thumb-neutral-700
+      dark:scrollbar-track-neutral-900
+  }
+}
