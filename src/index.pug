@@ -20,8 +20,22 @@ section(class="max-w-screen-md mx-auto px-4")
         div(id="filter-parameters" class="text-sm flex flex-wrap space-y-1")
 
       div
-        div(class="mb-3 font-bold") Format
+        div(class="mb-3 font-bold") Other
         div(id="filter-format" class="text-sm flex flex-wrap space-y-1")
+
+      div
+        div(class="mb-3 font-bold") Extras
+        div(class="text-sm flex flex-wrap space-y-1")
+          div(class="w-full gap-3 flex items-center cursor-pointer")
+            input(
+              id="filter-extras-lora" class="text-primary-500"
+              type='checkbox' value='lora')
+            label(for='filter-extras-lora') Lora
+          div(class="w-full gap-3 flex items-center cursor-pointer")
+            input(
+              id="filter-extras-uncensored" class="text-primary-500"
+              type='checkbox' value='uncensored')
+            label(for='filter-extras-uncensored') Uncensored
 
     div(class="space-y-4 col-span-2")
       div(class="flex justify-between items-center flex-col md:flex-row")
@@ -44,6 +58,8 @@ script.
   let filters = {
     parameters: null,
     format: null,
+    lora: false,
+    uncensored: false,
     page: 1
   }
 
@@ -162,19 +178,23 @@ script.
 
     const urlParams = new URLSearchParams(window.location.search);
     urlParams.set("page", filters.page)
-    if(filters.parameters) urlParams.set("parameters", filters.parameters)
-    if(filters.format) urlParams.set("format", filters.format)
+    urlParams.set("parameters", filters.parameters)
+    urlParams.set("format", filters.format)
+    urlParams.set("lora", filters.lora)
+    urlParams.set("uncensored", filters.uncensored)
     window.history.replaceState({}, '', `${location.pathname}?${urlParams}`);
 
     const filteredItems = models.filter(model => {
       if(filters.parameters){
-        if(filters.parameters === "unknown" && model.parameters === null) return true
+        if(filters.parameters === "unknown" && model.parameters !== null) return false
         if(model.parameters !== filters.parameters) return false
       }
       if(filters.format){
-        if(filters.format === "unknown" && model.format === null) return true
+        if(filters.format === "unknown" && model.format !== null) return false
         if(model.format !== filters.format) return false
       }
+      if(filters.lora && !model.lora) return false
+      if(filters.uncensored && !model.uncensored) return false
       return true
     })
 
@@ -307,6 +327,20 @@ script.
     filters.parameters = urlParams.get("parameters") || null
     filters.format = urlParams.get("format") || null
     filters.page = parseInt(urlParams.get("page") || "1")
+
+    document.getElementById("filter-extras-lora").checked = filters.lora
+    document.getElementById("filter-extras-lora").addEventListener("click", (ev) => {
+      filters.lora = ev.target.checked
+      filters.page = 1
+      renderPage()
+    })
+
+    document.getElementById("filter-extras-uncensored").checked = filters.uncensored
+    document.getElementById("filter-extras-uncensored").addEventListener("click", (ev) => {
+      filters.uncensored = ev.target.checked
+      filters.page = 1
+      renderPage()
+    })
 
     renderFilterParameters()
     renderFilterFormat()
